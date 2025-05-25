@@ -1,5 +1,7 @@
 SPARED
 
+ https://itch.io/jams/past adresinden 2023 yılında yapılan gamejam deki Spared oyunu yapılmaya çalışılmıştır.Orjinal  oyunun bağlantısı:https://clxrffdman.itch.io/spared
+ 
 Oyunda  oyuna başlama butonu bulunan bir giriş ekranı vardır. Butona basıldığında giriş ekranı kaybolur.Oyun ekranı açılır.Oyun ekranında 1 top, 5 kırmızı ve 1 beyaz labut bulunmaktadır.
 
 "Start Game" butonuna basıldığında 6 saniye geçtikten sonra bowling topu aşağı doğru hareket etmektedir.
