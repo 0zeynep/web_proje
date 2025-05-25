@@ -7,6 +7,7 @@ Oyunda  oyuna başlama butonu bulunan bir giriş ekranı vardır. Butona basıld
 "Start Game" butonuna basıldığında 6 saniye geçtikten sonra bowling topu aşağı doğru hareket etmektedir.
 Beyaz labut toptan kaçmaya çalışır.Labut toptan kaçabilirse ekranda "Spared" yazısı görünür.O tur kazanılmış olur.Kaçamaz ise "Strike" yazısı görünür.O tur kaybedilmiş olur. Oyun her yeniden başladığında kırmızı labutların konumu
 rastgele değişir.3 kere Spared olduğunda oyun kazanılır.3 kere Strike oldğunda kaybedilir.Oyun tekrar başlar.
+
 Kullandığım resimler:
 
 other_pins.png
