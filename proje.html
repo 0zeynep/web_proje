@@ -3,14 +3,15 @@
 <head>
     <title>Spared</title>
     <style>
-        body { margin:0;
+        body { 
+            margin:0;
             padding:0;
             background-color:rgb(218, 197, 212);
             display:flex;
             justify-content: center;
             align-items: center;
         }
-        #game_container{
+        #game_area{
             display:none;
             position:relative;
             width:600px;
@@ -36,7 +37,7 @@
             border-radius: 10px;
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
-         #login input[type="submit"]{
+        #login input[type="submit"]{
             padding: 20px 40px;
             font-size: 28px;
             background-color: #d67ba8;
@@ -45,26 +46,130 @@
             border-radius: 6px;
             cursor: pointer;
             transition: all 0.3s;
-            }
+        }
+        .message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 72px;
+            font-weight: bold;
+            color: #ff0;
+            text-shadow: 3px 3px 5px rgba(0,0,0,0.5);
+            opacity: 0;
+            transition: opacity 0.5s;
+            z-index: 100;
+        }
+        .visible {
+            opacity: 1;
+        }
+        #countdown {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 100px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 3px 3px 5px rgba(0,0,0,0.5);
+            z-index: 100;
+        }
+        #resultMessage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            font-weight: bold;
+            color: #fff;
+            background-color: rgba(0,0,0,0.7);
+            padding: 20px 40px;
+            border-radius: 10px;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.5s;
+            z-index: 100;
+        }
+        #resultMessage.visible {
+            opacity: 1;
+
+        }
+        #soundControl {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0,0,0,0.5);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 200;
+}
     </style>
 </head>
 <body>
     <div id="login">
         <input type="submit" value="Start Game" id="start_button">
-         </div>
-        <div id="game_container">
-        <canvas id="gameCanvas" width="600" height="750"></canvas>
     </div>
-    
+    <div id="game_area">
+        <canvas id="gameCanvas" width="600" height="750"></canvas>
+        <div id="strikeMessage" class="message">STRIKE!</div>
+        <div id="spareMessage" class="message">SPARED!</div>
+        <div id="countdown"></div>
+        <div id="resultMessage"></div>
+        <audio id="backgroundMusic" loop>
+        <source src="backgroundMusic.mp3" type="audio/mpeg">
+        </audio>
+    </div>
+    <button id="soundControl">🔊</button>
     <script>
-        const startButton=document.getElementById('start_button');
+        const startButton = document.getElementById('start_button');
         const loginScreen = document.getElementById('login');
-        const gameContainer = document.getElementById('game_container');
-           startButton.addEventListener('click', function() {
+        const gameArea = document.getElementById('game_area');
+        const strikeMessage = document.getElementById('strikeMessage');
+        const spareMessage = document.getElementById('spareMessage');
+        const countdownElement = document.getElementById('countdown');
+        const resultMessage = document.getElementById('resultMessage');
+        const backgroundMusic = document.getElementById('backgroundMusic');
+        
+        let strikeCount = 0;
+        let spareCount = 0;
+        function playBackgroundMusic() {
+    backgroundMusic.volume = 0.3; 
+    backgroundMusic.play().catch(e => console.log("Otomatik oynatma engellendi:", e));
+}
+const soundControl = document.getElementById('soundControl');
+let isSoundOn = true;
+
+soundControl.addEventListener('click', function() {
+    isSoundOn = !isSoundOn;
+    
+    if (isSoundOn) {
+        soundControl.textContent = '🔊';
+        backgroundMusic.volume = 0.3;
+        strikeSound.volume = 0.7;
+        spareSound.volume = 0.7;
+        rollSound.volume = 0.5;
+    } else {
+        soundControl.textContent = '🔇';
+        backgroundMusic.volume = 0;
+        strikeSound.volume = 0;
+        spareSound.volume = 0;
+        rollSound.volume = 0;
+    }
+});
+        startButton.addEventListener('click', function() {
             loginScreen.style.display = 'none';
-            gameContainer.style.display = 'block';
-            initGame();
+            gameArea.style.display = 'block';
+            resetCounters(); 
+            initPins(); 
+            startCountdown();
+             playBackgroundMusic();
         });
+        
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         
@@ -77,12 +182,17 @@
             other_pin4: new Image(),
             other_pin5: new Image(),
         };
+        
         const ball = {
             width: 80,
             height: 80,
             x: 0,
-            y: 20
+            y: 20,
+            originalX: 0,
+            originalY: 20,
+            speed: 0.9
         };
+        
         const pin = {
             width: 40,
             height: 100,
@@ -91,99 +201,264 @@
             speed: 5,
             isMoving: false,
             targetX: 0,
-            targetY: 0
+            targetY: 0,
+            originalX: 0,
+            originalY: 0
         };
+        
         const other_pin1 = {
-            width:40,
-            height:100,
-            x:300,
-            y:400
-        }
+            width: 40,
+            height: 100,
+            x: 350,
+            y: 400,
+            originalX: 350,
+            originalY: 400
+        };
+        
         const other_pin2 = {
-            width:40,
-            height:100,
-            x: 100,  
-            y: 500 
-        }
-       const other_pin3 = {
-            width:40,
-            height:100,
-            x: 200,  
-            y:400
-        }
-       const other_pin4 = {
-            width:40,
-            height:100,
-            x: 500,  
-            y: 550  
-        }
-       const other_pin5 = {
-            width:40,
-            height:100,
-            x: 350,  
-            y:450 
-        }
+            width: 40,
+            height: 100,
+            x: 100,
+            y: 500,
+            originalX: 100,
+            originalY: 500
+        };
+        
+        const other_pin3 = {
+            width: 40,
+            height: 100,
+            x: 200,
+            y: 400,
+            originalX: 200,
+            originalY: 400
+        };
+        
+        const other_pin4 = {
+            width: 40,
+            height: 100,
+            x: 500,
+            y: 550,
+            originalX: 500,
+            originalY: 550
+        };
+        
+        const other_pin5 = {
+            width: 40,
+            height: 100,
+            x: 450,
+            y: 450,
+            originalX: 450,
+            originalY: 450
+        };
+        
+        let gameStarted = false;
+        let countdownInterval;
+        let ballStartX = 0;
+
         assets.ball.src = "Cyan Bowlling_576p.png";
         assets.pin.src = "PinPicture.PNG";
-        assets.other_pin1.src="other_pin1.png";
-        assets.other_pin2.src="other_pin2.png";
-        assets.other_pin3.src="other_pin3.png";
-        assets.other_pin4.src="other_pin4.png";
-        assets.other_pin5.src="other_pin5.png";
-
+        assets.other_pin1.src = "other_pin1.png";
+        assets.other_pin2.src = "other_pin2.png";
+        assets.other_pin3.src = "other_pin3.png";
+        assets.other_pin4.src = "other_pin4.png";
+        assets.other_pin5.src = "other_pin5.png";
+        
+        function resetCounters() {
+            strikeCount = 0;
+            spareCount = 0;
+        }
+        
+        function initPins() {
+            pin.x = (canvas.width / 2) - (pin.width / 2);
+            pin.y = canvas.height - pin.height - 30;
+            pin.originalX = pin.x;
+            pin.originalY = pin.y;
+          
+            other_pin1.x = 50 + Math.random() * 200;
+            other_pin1.y = 350 + Math.random() * 150;
+            other_pin1.originalX = other_pin1.x;
+            other_pin1.originalY = other_pin1.y;
+            
+            other_pin2.x = 250 + Math.random() * 200;
+            other_pin2.y = 400 + Math.random() * 150;
+            other_pin2.originalX = other_pin2.x;
+            other_pin2.originalY = other_pin2.y;
+            
+            other_pin3.x = 100 + Math.random() * 200;
+            other_pin3.y = 500 + Math.random() * 100;
+            other_pin3.originalX = other_pin3.x;
+            other_pin3.originalY = other_pin3.y;
+            
+            other_pin4.x = 300 + Math.random() * 200;
+            other_pin4.y = 450 + Math.random() * 150;
+            other_pin4.originalX = other_pin4.x;
+            other_pin4.originalY = other_pin4.y;
+            
+            other_pin5.x = 150 + Math.random() * 300;
+            other_pin5.y = 400 + Math.random() * 200;
+            other_pin5.originalX = other_pin5.x;
+            other_pin5.originalY = other_pin5.y;
+        }
+        
+        function startCountdown() {
+            let count = 6;
+            countdownElement.textContent = count;
+            
+            countdownInterval = setInterval(() => {
+                count--;
+                countdownElement.textContent = count;
+                
+                if (count <= 0) {
+                    clearInterval(countdownInterval);
+                    countdownElement.textContent = '';
+                    initGame();
+                    gameStarted = true;
+                }
+            }, 1000);
+        }
+        
         let imagesLoaded = 0;
         Object.values(assets).forEach(img => {
             img.onload = () => {
                 imagesLoaded++;
                 if (imagesLoaded === Object.keys(assets).length) {
-                    initGame();
+                  
                 }
             };
         });
-          function gameLoop() {
+        
+        function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             movePin();
             drawObjects();
             requestAnimationFrame(gameLoop);
+            moveBall();
+            checkCollisions();
         }
+        
         function initGame() {
-                   ball.x = (canvas.width / 2) - (ball.width / 2);
-            pin.x = (canvas.width / 2) - (pin.width / 2);
-            pin.y = canvas.height - pin.height - 30;
+            ballStartX = 40 + Math.random() * (canvas.width - 80 - 40);
+            ball.x = ballStartX;
+            ball.y = 20;
+            ball.originalX = ball.x;
+            ball.originalY = ball.y;
+            ball.isMoving = true;
+            
             pin.targetX = pin.x;
             pin.targetY = pin.y;
+            
             gameLoop();
         }
-         function drawObjects(){
+        
+        function drawObjects() {
             ctx.drawImage(assets.ball, ball.x, ball.y, ball.width, ball.height);
             ctx.drawImage(assets.pin, pin.x, pin.y, pin.width, pin.height);
-            ctx.drawImage(assets.other_pin1,other_pin1.x, other_pin1.y, other_pin1.width, other_pin1.height);
-            ctx.drawImage(assets.other_pin2,other_pin2.x, other_pin2.y, other_pin2.width, other_pin2.height);
-            ctx.drawImage(assets.other_pin3,other_pin3.x, other_pin3.y, other_pin3.width, other_pin3.height);
-            ctx.drawImage(assets.other_pin4,other_pin4.x, other_pin4.y, other_pin4.width, other_pin4.height);
-            ctx.drawImage(assets.other_pin5,other_pin5.x, other_pin5.y, other_pin5.width, other_pin5.height);
-            }
-            canvas.addEventListener('click', (e) => {
+            ctx.drawImage(assets.other_pin1, other_pin1.x, other_pin1.y, other_pin1.width, other_pin1.height);
+            ctx.drawImage(assets.other_pin2, other_pin2.x, other_pin2.y, other_pin2.width, other_pin2.height);
+            ctx.drawImage(assets.other_pin3, other_pin3.x, other_pin3.y, other_pin3.width, other_pin3.height);
+            ctx.drawImage(assets.other_pin4, other_pin4.x, other_pin4.y, other_pin4.width, other_pin4.height);
+            ctx.drawImage(assets.other_pin5, other_pin5.x, other_pin5.y, other_pin5.width, other_pin5.height);
+        }
+        
+        canvas.addEventListener('click', (e) => {
             const rect = canvas.getBoundingClientRect();
             pin.targetX = e.clientX - rect.left;
             pin.targetY = e.clientY - rect.top;
             pin.isMoving = true;
         });
-       function movePin() {
+        
+        function movePin() {
             if (!pin.isMoving) return;
+            
             const dx = pin.targetX - pin.x;
             const dy = pin.targetY - pin.y;
             const distance = Math.sqrt(dx*dx + dy*dy);
-            const vx = (dx / distance) * pin.speed;
-            const vy = (dy / distance) * pin.speed;
-                   if (distance > 0) {
+            
+            if (distance > 0) {
                 pin.x += (dx / distance) * pin.speed;
                 pin.y += (dy / distance) * pin.speed;
             }
+            
             pin.x = Math.max(pin.width/2, Math.min(canvas.width - pin.width/2, pin.x));
-            pin.y = Math.max(pin.height, Math.min(canvas.height, pin.y));  
+            pin.y = Math.max(pin.height, Math.min(canvas.height, pin.y));
+            
+           
+            if (distance < pin.speed) {
+                pin.isMoving = false;
+            }
         }
+        
+        function moveBall() {
+            if (!ball.isMoving) return;
+            
+            ball.y += ball.speed;
+            
+            if (ball.y > canvas.height) {
+                spareCount++;
+                showMessage(spareMessage);
+                checkGameResult();
+                resetGame();
+            }
+        }
+        
+        function checkCollisions() {
+            if (checkCollision(ball, pin)) {
+                strikeCount++;
+                showMessage(strikeMessage);
+                checkGameResult();
+                resetGame();
+            }
+        }
+        
+        function checkGameResult() {
+            if (spareCount >= 3) {
+                showFinalResult("CONGRATULATIONS! YOU WON!");
+                resetCounters();
+            } else if (strikeCount >= 3) {
+                showFinalResult("YOU LOST!");
+                resetCounters();
+            }
+        }
+        
+        function showFinalResult(message) {
+            resultMessage.textContent = message;
+            resultMessage.classList.add('visible');
+            
+            setTimeout(() => {
+                resultMessage.classList.remove('visible');
+            }, 3000);
+        }
+        
+        function checkCollision(obj1, obj2) {
+            return obj1.x < obj2.x + obj2.width &&
+                   obj1.x + obj1.width > obj2.x &&
+                   obj1.y < obj2.y + obj2.height &&
+                   obj1.y + obj1.height > obj2.y;
+        }
+        
+        function resetGame() {
+            ball.isMoving = false;
+            ball.x = ball.originalX;
+            ball.y = ball.originalY;
+            
+            pin.x = pin.originalX;
+            pin.y = pin.originalY;
+            pin.isMoving = false;
+            
+            gameStarted = false;
+            setTimeout(() => {
                
+                initPins();
+                startCountdown();
+            }, 2000);
+        }
+        
+        function showMessage(element) {
+            element.classList.add('visible');
+            setTimeout(() => {
+                element.classList.remove('visible');
+            }, 1000);
+        }
     </script>
 </body>
 </html>
